@@ -89,7 +89,6 @@ func (a *amqpMessageQueue) Push(queue string, messages ...[]byte) (err error) {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("queue is %s\n", queue)
 
 	for _, message := range messages {
 		err = ch.Publish(
@@ -102,7 +101,6 @@ func (a *amqpMessageQueue) Push(queue string, messages ...[]byte) (err error) {
 				ContentType:  "text/plain",
 				Body:         message,
 			})
-		fmt.Printf("this is publish %+v", err)
 		if err != nil {
 
 			return err
@@ -141,8 +139,6 @@ func (a *amqpMessageQueue) Pop(queue string) (QueueMessage, error) {
 	}
 
 	result, _, errGet := ch.Get(q.Name, a.autoAck)
-	fmt.Printf("err get %+v", errGet)
-
 	if errGet != nil {
 		return nil, errGet
 	}
