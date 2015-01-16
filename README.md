@@ -83,14 +83,12 @@ MessageQueue interface says it all.
 #!go
 type MessageQueue interface {
 	// Pushes message to queue
-	// Direct
 	Push(queue string, messages ...[]byte) error
 
 	// Pops message from queue
-	// In case of blocking == True timeout can be set or default will be used
-	Pop(queue string) ([]byte, error)
+	Pop(queue string) (QueueMessage, error)
 
-	// Publishes message to topic
+	// Publishes message to queue (all subscribers)
 	// Fanout
 	Publish(queue string, message []byte) error
 
