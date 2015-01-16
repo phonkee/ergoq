@@ -20,7 +20,6 @@ To open ergoq message queue you can use Open function and provide DSN.
 Every driver can have slightly different implementation but usually you will see
 
 	<driverName>://<host>:<port>/<database>?params
-	<driverName>://<socket>/<database>?params
 
 Example:
 
