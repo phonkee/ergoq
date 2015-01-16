@@ -102,7 +102,7 @@ func TestRedis(t *testing.T) {
 		mq2.Push(test_queue, test_message)
 		v3, errPop := mq2.Pop(test_queue)
 		So(errPop, ShouldBeNil)
-		So(v3.Ack(), ShouldNotBeNil)
+		So(v3.Ack(), ShouldBeNil)
 
 	})
 

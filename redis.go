@@ -233,8 +233,10 @@ func (r *redisQueueMessage) Message() []byte {
 
 // Acknowledge message
 func (r *redisQueueMessage) Ack() error {
+	// if auto ack is set call to Ack is not error, it is?
 	if r.autoAck {
-		return fmt.Errorf("message automatically acknowledged")
+		// return fmt.Errorf("message automatically acknowledged")
+		return nil
 	}
 	conn := r.pool.Get()
 	defer conn.Close()

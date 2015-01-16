@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"testing"
+	"time"
 
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -41,11 +42,13 @@ func TestMessageQueueDriver(t *testing.T) {
 func TestDrivers(t *testing.T) {
 	dsns := []string{
 		"redis://localhost:6379",
+		"amqp://guest:guest@localhost:5672//test?reliable=true",
 	}
 	for _, dsn := range dsns {
 		mq, err := Open(dsn)
+
 		if err != nil {
-			t.Error(err)
+			t.Fatalf("Error: %+v\n", err)
 		}
 
 		driverName, err := getNameFromDSN(dsn)
@@ -63,10 +66,14 @@ func TestDrivers(t *testing.T) {
 			errPush := mq.Push(test_queue, test_message)
 			So(errPush, ShouldBeNil)
 
+			time.Sleep(2)
+
 			v, errPop := mq.Pop(test_queue)
 			So(errPop, ShouldBeNil)
+
 			So(v.Message(), ShouldResemble, test_message)
 			So(v.Queue(), ShouldEqual, test_queue)
+
 			So(v.Id(), ShouldNotEqual, "")
 
 			_, e := strconv.Atoi(v.Id())
