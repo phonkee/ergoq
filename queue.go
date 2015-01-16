@@ -36,10 +36,10 @@ var drivers = make(map[string]MessageQueueDriver)
 // it panics.
 func Register(name string, driver MessageQueueDriver) {
 	if driver == nil {
-		panic("sql: Register driver is nil")
+		panic("ergoq: Register driver is nil")
 	}
 	if _, dup := drivers[name]; dup {
-		panic("sql: Register called twice for driver " + name)
+		panic("ergoq: Register called twice for driver " + name)
 	}
 	drivers[name] = driver
 }
