@@ -1,5 +1,11 @@
 # README #
 
+### Warning !! ### 
+This library is heavily developed and the api can be changed !! 
+I hope that in couple of days the api will stabilize and I will continue
+to develop other drivers.
+
+
 ## What is this repository for? ##
 
 Ergoq package is small and lightweight message queue abstraction.
