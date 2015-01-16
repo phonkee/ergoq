@@ -16,10 +16,11 @@ Currently only redis implementation is done, but amqp is on the way also.
 
 All snippets of code assume import of library
 
+```go
 	import (
 		"github.com/phonkee/ergoq"
 	)
-
+```
 
 Ergoq supports drivers system as seen in sql package. Every driver uses it's own connection(for redis it's redis.Pool).
 To open ergoq message queue you can use Open function and provide DSN. 
@@ -29,8 +30,7 @@ Every driver can have slightly different implementation but usually you will see
 
 Example:
 
-```
-#!go
+```go
 dsn := "redis://localhost:6379/0?max_idle=100&max_active=100&idle_timeout=200"
 ```
 
@@ -57,8 +57,7 @@ You can open message two ways.
 
 a. You provide DSN string to ergoq.Open and let ergoq make connections for you
 
-```
-#!go
+```go
 mq, err := ergoq.Open("redis://localhost:6379/0")
 if err != nil {
 	panic(err)
@@ -67,8 +66,7 @@ if err != nil {
 
 b. You provide connection to OpenConnection
 
-```
-#!go
+```go
 pool := redis.Pool{
 	Dial: func() (redis.Conn, error) {
 		return redis.Dial("tcp", ":6379")
@@ -84,8 +82,7 @@ if err != nil {
 
 MessageQueue interface says it all.
 
-```
-#!go
+```go
 type MessageQueue interface {
 	// Pushes message to queue
 	Push(queue string, messages ...[]byte) error
@@ -105,8 +102,7 @@ type MessageQueue interface {
 
 Examples:
 
-```
-#!go
+```go
 // Error checking is omitted, but please you make you checks!
 mq, _ := ergoq.Open("redis://localhost:6379/0")
 
