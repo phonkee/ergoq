@@ -16,22 +16,17 @@ type MessageQueueDriver interface {
 
 type MessageQueue interface {
 
-	// Opens connection
-	// Open(dsn string) error
-
 	// Pushes message to queue
-	// Direct
 	Push(queue string, messages ...[]byte) error
 
 	// Pops message from queue
 	Pop(queue string) (QueueMessage, error)
 
-	// Publishes message to topic
-	// Fanout
+	// Publishes message to queue(fanout for all subscribers)
 	Publish(queue string, message []byte) error
 
 	// Subscribes to queue(s)
-	Subscribe(quit <-chan struct{}, topics ...string) (chan SubscribeMessage, chan error)
+	Subscribe(quit <-chan struct{}, queues ...string) (chan SubscribeMessage, chan error)
 }
 
 var drivers = make(map[string]MessageQueueDriver)
