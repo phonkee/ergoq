@@ -81,7 +81,7 @@ func TestDrivers(t *testing.T) {
 			So(err, ShouldBeNil)
 		})
 
-		Convey(fmt.Sprintf("test subscribe message driver:%s", driverName), t, func() {
+		Convey(fmt.Sprintf("test publish message driver:%s", driverName), t, func() {
 			data := []struct {
 				queue    string
 				messages [][]byte
@@ -93,8 +93,8 @@ func TestDrivers(t *testing.T) {
 
 			for _, v := range data {
 				for _, m := range v.messages {
-					_ = m
-					// mq.Publish(v.queue, m)
+					errPublish := mq.Publish(v.queue, m)
+					So(errPublish, ShouldBeNil)
 				}
 			}
 
