@@ -11,7 +11,7 @@ type QueueMessage interface {
 	// Acknowledges message
 	Ack() error
 
-	// returns id int
+	// returns id of message
 	Id() string
 }
 
