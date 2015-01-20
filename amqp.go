@@ -11,9 +11,12 @@ import (
 const (
 	RELIABLE_URL_PARAM = "reliable"
 	AUTO_ACK_URL_PARAM = "auto_ack"
+	EXCHANGE_URL_PARAM = "exchange"
 
 	DEF_AMQP_RELIABLE = true
 	DEF_AMQP_AUTO_ACK = false
+	DEF_AMQP_PREFIX   = "errgoq"
+	DEF_EXCHANGE      = "errgo"
 )
 
 func init() {
@@ -36,24 +39,29 @@ func (a *AMQPDriver) Open(dsn string) (MessageQueue, error) {
 	}
 
 	d := amqpMessageQueue{
-		conn:    conn,
-		autoAck: pd.autoAck,
+		conn:     conn,
+		settings: pd.settings,
 	}
 
 	return &d, nil
 }
 
 // open by already instantiated connection
-func (a *AMQPDriver) OpenConnection(connection interface{}) (MessageQueue, error) {
+func (a *AMQPDriver) OpenConnection(connection interface{}, settings string) (MessageQueue, error) {
 
 	conn, ok := connection.(*amqp.Connection)
 	if !ok {
 		return nil, fmt.Errorf("ergoq: amqp connection %+v not recognized.", connection)
 	}
 
+	s, err := url.ParseQuery(settings)
+	if err != nil {
+		return nil, err
+	}
+
 	d := amqpMessageQueue{
-		conn:    conn,
-		autoAck: DEF_AMQP_AUTO_ACK,
+		conn:     conn,
+		settings: NewAMQPURLSettings(s),
 	}
 
 	return &d, nil
@@ -61,120 +69,114 @@ func (a *AMQPDriver) OpenConnection(connection interface{}) (MessageQueue, error
 
 // amqp message queue implementation
 type amqpMessageQueue struct {
-	conn    *amqp.Connection
-	autoAck bool
+	conn     *amqp.Connection
+	settings *amqpURLSettings
+}
+
+func (a *amqpMessageQueue) declareFanoutExchange(channel *amqp.Channel) error {
+	return channel.ExchangeDeclare(
+		a.settings.getName("fanout"), // name
+		"direct",                     // type
+		false,                        // durable
+		true,                         // auto-deleted
+		false,                        // internal
+		false,                        // no-wait
+		nil,                          // arguments
+	)
 }
 
 // pushes message to queue
-// TODO: add "mandatory", "immediate" and other settings to parsedsn?
-func (a *amqpMessageQueue) Push(queue string, messages ...[]byte) (err error) {
-	if len(messages) == 0 {
-		return fmt.Errorf("no messages given")
-	}
-	ch, errChannel := a.conn.Channel()
-	if errChannel != nil {
-		return errChannel
+func (a *amqpMessageQueue) Push(queue string, message []byte) (err error) {
+	ch, err := a.conn.Channel()
+	if err != nil {
+		return err
 	}
 	defer ch.Close()
 
-	err = ch.ExchangeDeclare(
-		queue,    // name
-		"direct", // type
-		true,     // durable
-		false,    // auto-deleted
-		false,    // internal
-		false,    // no-wait
-		nil,      // arguments
-	)
+	q, errQueue := ch.QueueDeclare(
+		a.settings.getName(queue),
+		true,
+		true,
+		false,
+		false,
+		nil)
+	if errQueue != nil {
+		return errQueue
+	}
+
+	err = ch.Publish(
+		"",     // exchange
+		q.Name, // routing key
+		false,  // mandatory
+		false,  // immediate
+		amqp.Publishing{
+			DeliveryMode: amqp.Persistent,
+			ContentType:  "text/plain",
+			Body:         message,
+		})
 	if err != nil {
 		return err
 	}
 
-	for _, message := range messages {
-		err = ch.Publish(
-			"",    // exchange
-			queue, // routing key
-			false, // mandatory
-			false, // immediate
-			amqp.Publishing{
-				DeliveryMode: amqp.Persistent,
-				ContentType:  "text/plain",
-				Body:         message,
-			})
-		if err != nil {
-
-			return err
-		}
-	}
-
 	return nil
 }
+
+// Pop message from direct exchange, in case of settings.autoAck = true
+// 	Queue message must be acknowledged
 func (a *amqpMessageQueue) Pop(queue string) (QueueMessage, error) {
 	ch, errChannel := a.conn.Channel()
 	if errChannel != nil {
 		return nil, errChannel
 	}
-	defer ch.Close()
 
-	q, err := ch.QueueDeclare(
-		queue, // name
-		true,  // durable
-		false, // delete when unused
-		false, // exclusive
-		false, // no-wait
-		nil,   // arguments
-	)
-	if err != nil {
-		return nil, err
+	if a.settings.autoAck {
+		defer ch.Close()
 	}
 
-	err = ch.Qos(
-		3,     // prefetch count
-		0,     // prefetch size
-		false, // global
-	)
-
-	if err != nil {
-		return nil, err
+	q, errQueue := ch.QueueDeclare(
+		a.settings.getName(queue),
+		true,
+		true,
+		false,
+		false,
+		nil)
+	if errQueue != nil {
+		return nil, errQueue
 	}
 
-	result, _, errGet := ch.Get(q.Name, a.autoAck)
-	if errGet != nil {
-		return nil, errGet
+	d, ok, e := ch.Get(q.Name, a.settings.autoAck)
+	if e != nil {
+		return nil, e
+	}
+	if !ok {
+		return nil, fmt.Errorf("not found")
 	}
 
-	message := amqpQueueMessage{
-		delivery: &result,
-		autoAck:  a.autoAck,
+	message := &amqpQueueMessage{
+		settings: a.settings,
+		delivery: &d,
+		channel:  ch,
 	}
 
-	return &message, nil
+	return message, nil
 }
+
+// publishes message to fanout exchange
 func (a *amqpMessageQueue) Publish(queue string, message []byte) (err error) {
 	ch, errChannel := a.conn.Channel()
+
 	if errChannel != nil {
 		return errChannel
 	}
 
-	defer ch.Close()
-
-	err = ch.ExchangeDeclare(
-		queue,   // name
-		"topic", // type
-		true,    // durable
-		false,   // auto-deleted
-		false,   // internal
-		false,   // no-wait
-		nil,     // arguments
-	)
-
+	err = a.declareFanoutExchange(ch)
 	if err != nil {
 		return err
 	}
 
 	err = ch.Publish(
-		queue, // exchange
-		"",    // routing key
+		a.settings.getName("fanout"), // exchange
+		queue, // routing key
 		false, // mandatory
 		false, // immediate
 		amqp.Publishing{
@@ -186,53 +188,55 @@ func (a *amqpMessageQueue) Publish(queue string, message []byte) (err error) {
 		return err
 	}
 
-	return nil
+	return err
 }
 
 // starts receiving messages
 func (a *amqpMessageQueue) Subscribe(quit <-chan struct{}, queues ...string) (chan SubscribeMessage, chan error) {
-	ch, errChannel := a.conn.Channel()
-	if errChannel != nil {
-		e := make(chan error)
-		e <- errChannel
-		return nil, e
-	}
-
-	// defer ch.Close()
-
-	receivers := make([]<-chan amqp.Delivery, 0, len(queues))
 	errors := make(chan error)
 	values := make(chan SubscribeMessage)
+	ch, _ := a.conn.Channel()
 
+	a.declareFanoutExchange(ch)
+
+	q, _ := ch.QueueDeclare(
+		"",
+		false, //durable
+		true,  // autodelete
+		false, // exclusive
+		false, // nowait
+		nil)   //args
+
+	fe := a.settings.getName("fanout")
+	// bind to multiple routing keys
 	for _, queue := range queues {
-		msgs, err := ch.Consume(
-			queue, // queue
-			"",    // consumer
-			true,  // auto ack
-			false, // exclusive
-			false, // no local
-			false, // no wait
-			nil,   // args
-		)
-		if err != nil {
-			continue
-		}
-		receivers = append(receivers, msgs)
+		ch.QueueBind(
+			q.Name, // queue name
+			queue,  // routing key
+			fe,     // exchange
+			false,  //nowait
+			nil)    // args
 	}
+
+	deliveries, _ := ch.Consume(
+		q.Name, // queue
+		"",     // consumer
+		true,   // autoack
+		true,   // exclusive
+		false,  // nonlocal
+		false,  // nowait
+		nil)    //args
 
 	go func() {
 		for {
 			select {
+			case d := <-deliveries:
+				sm := NewSubscriberMessage(d.RoutingKey, d.Body)
+				values <- sm
 			case <-quit:
-				// what now?
-				// close queuest or do something else??
-			}
-
-			for _, m := range receivers {
-				select {
-				case msg := <-m:
-					values <- NewSubscriberMessage(msg.Exchange, msg.Body)
-				}
+				ch.Close()
+				close(values)
+				close(errors)
 			}
 		}
 	}()
@@ -240,12 +244,33 @@ func (a *amqpMessageQueue) Subscribe(quit <-chan struct{}, queues ...string) (ch
 	return values, errors
 }
 
+// amqpURLSettings
+type amqpURLSettings struct {
+	// TODO: implement reliable messaging
+	reliable bool
+	autoAck  bool
+	prefix   string
+}
+
+// returns prefixed exchange name
+func (a *amqpURLSettings) getName(name string) string {
+	return a.prefix + "." + name
+}
+
+func NewAMQPURLSettings(values url.Values) *amqpURLSettings {
+	settings := &amqpURLSettings{
+		reliable: GetBool(values, RELIABLE_URL_PARAM, DEF_AMQP_RELIABLE),
+		autoAck:  GetBool(values, URL_PARAM_NAME_AUTO_ACK, DEFAULT_AUTO_ACK),
+		prefix:   GetString(values, URL_PARAM_PREFIX, DEFAULT_PREFIX),
+	}
+	return settings
+}
+
 // dsn information
 type AMQPDSN struct {
-	reliable bool
 	dsn      string
 	url      *url.URL
-	autoAck  bool
+	settings *amqpURLSettings
 }
 
 // Parses dsn
@@ -257,9 +282,8 @@ func ParseAMQPDSN(dsn string) (*AMQPDSN, error) {
 
 	d := &AMQPDSN{
 		url:      p,
-		reliable: GetBool(p.Query(), RELIABLE_URL_PARAM, DEF_AMQP_RELIABLE),
-		autoAck:  GetBool(p.Query(), AUTO_ACK_URL_PARAM, DEF_AMQP_AUTO_ACK),
 		dsn:      dsn,
+		settings: NewAMQPURLSettings(p.Query()),
 	}
 
 	return d, nil
@@ -267,8 +291,9 @@ func ParseAMQPDSN(dsn string) (*AMQPDSN, error) {
 
 // Messages
 type amqpQueueMessage struct {
-	autoAck  bool
+	settings *amqpURLSettings
 	delivery *amqp.Delivery
+	channel  *amqp.Channel
 }
 
 // returns message content
@@ -278,13 +303,14 @@ func (a *amqpQueueMessage) Message() []byte {
 
 // Acknowledge message
 func (a *amqpQueueMessage) Ack() error {
-	if a.autoAck {
+	if a.settings.autoAck {
 		return fmt.Errorf("message automatically acknowledged")
 	}
 
 	// acknowledge only single message thus false
-	a.delivery.Ack(false)
-	return nil
+	err := a.delivery.Ack(false)
+	a.channel.Close()
+	return err
 }
 
 // returns id of message

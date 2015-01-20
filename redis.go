@@ -1,7 +1,6 @@
 package ergoq
 
 import (
-	"errors"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -65,7 +64,7 @@ func (r *redisDriver) Open(dsn string) (MessageQueue, error) {
 }
 
 // opens message queue by connection (&redis.Pool)
-func (r *redisDriver) OpenConnection(connection interface{}) (MessageQueue, error) {
+func (r *redisDriver) OpenConnection(connection interface{}, settings string) (MessageQueue, error) {
 	switch connection.(type) {
 	case *redis.Pool:
 		pool := connection.(*redis.Pool)
@@ -97,17 +96,13 @@ type redisMessageQueue struct {
 }
 
 // Pushes message to queue to be consumed by one of workers
-func (r *redisMessageQueue) Push(queue string, messages ...[]byte) error {
-
-	if len(messages) == 0 {
-		return errors.New("invalid messages")
-	}
+func (r *redisMessageQueue) Push(queue string, message []byte) error {
 	// get connection from pool
 	conn := r.pool.Get()
 	// release connection back to pool
 	defer conn.Close()
 
-	_, err := conn.Do("LPUSH", redis.Args{}.Add(queue).AddFlat(messages)...)
+	_, err := conn.Do("LPUSH", redis.Args{}.Add(queue).Add(message)...)
 	return err
 }
 

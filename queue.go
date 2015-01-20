@@ -5,19 +5,29 @@ import (
 	"sort"
 )
 
+const (
+	URL_PARAM_NAME_AUTO_ACK = "auto_ack"
+	URL_PARAM_PREFIX        = "prefix"
+
+	// default values
+	DEFAULT_AUTO_ACK = false
+	DEFAULT_PREFIX   = "errgoq"
+)
+
 type MessageQueueDriver interface {
 
 	// "opens" message queuer
 	Open(dsn string) (MessageQueue, error)
 
 	// Opens queuer by connection
-	OpenConnection(connection interface{}) (MessageQueue, error)
+	// 	settings is url encoded params e.g. "auto_ack=true&exchange=exchange"
+	OpenConnection(connection interface{}, settings string) (MessageQueue, error)
 }
 
 type MessageQueue interface {
 
 	// Pushes message to queue
-	Push(queue string, messages ...[]byte) error
+	Push(queue string, message []byte) error
 
 	// Pops message from queue
 	Pop(queue string) (QueueMessage, error)
@@ -69,11 +79,16 @@ func Open(dsn string) (MessageQueue, error) {
 }
 
 // opens message queue by name and connection
-func OpenConnection(driverName string, connection interface{}) (MessageQueue, error) {
+func OpenConnection(driverName string, connection interface{}, settings ...string) (MessageQueue, error) {
 	di, ok := drivers[driverName]
 	if !ok {
 		return nil, fmt.Errorf("ergoq: unknown driver %q (forgotten import?)", driverName)
 	}
+	// additional settings
+	urlSettings := ""
+	if len(settings) > 0 {
+		urlSettings = settings[0]
+	}
 
-	return di.OpenConnection(connection)
+	return di.OpenConnection(connection, urlSettings)
 }

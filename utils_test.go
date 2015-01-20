@@ -70,4 +70,22 @@ func TestName(t *testing.T) {
 		}
 	})
 
+	Convey("Test GetString", t, func() {
+		key := "k"
+		data := []struct {
+			values   url.Values
+			name     string
+			expected string
+			def      string
+		}{
+			{url.Values{key: []string{"yes"}}, key, "yes", "nope"},
+			{url.Values{}, key, "nope", "nope"},
+		}
+
+		for _, item := range data {
+			ret := GetString(item.values, item.name, item.def)
+			So(ret, ShouldEqual, item.expected)
+		}
+	})
+
 }

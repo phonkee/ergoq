@@ -61,3 +61,19 @@ func GetBool(values url.Values, key string, def bool) bool {
 
 	return false
 }
+
+// returns int from url.values if not found return default value
+func GetString(values url.Values, key string, def string) string {
+
+	val := values.Get(key)
+	if val == "" {
+		return def
+	}
+
+	l := strings.TrimSpace(strings.ToLower(val))
+
+	if l == "" {
+		return def
+	}
+	return l
+}

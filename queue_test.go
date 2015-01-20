@@ -3,8 +3,8 @@ package ergoq
 import (
 	"fmt"
 	"strconv"
+	"sync"
 	"testing"
-	"time"
 
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -42,67 +42,100 @@ func TestMessageQueueDriver(t *testing.T) {
 func TestDrivers(t *testing.T) {
 	dsns := []string{
 		"redis://localhost:6379",
-		"amqp://guest:guest@localhost:5672//test?reliable=true",
+		"amqp://guest:guest@localhost:5672//test",
 	}
 	for _, dsn := range dsns {
-		mq, err := Open(dsn)
-
-		if err != nil {
-			t.Fatalf("Error: %+v\n", err)
-		}
-
 		driverName, err := getNameFromDSN(dsn)
 		if err != nil {
 			t.Error(err)
 		}
 
 		Convey(fmt.Sprintf("test push/pop message driver:%s", driverName), t, func() {
+			mq, err := Open(dsn)
+
+			if err != nil {
+				t.Fatalf("Error: %+v\n", err)
+			}
+
 			test_queue := "queue"
 			test_message := []byte("message")
-
-			errPushBlank := mq.Push(test_queue)
-			So(errPushBlank, ShouldNotBeNil)
 
 			errPush := mq.Push(test_queue, test_message)
 			So(errPush, ShouldBeNil)
 
-			time.Sleep(2)
-
+			//time.Sleep(time.Second * 2)
 			v, errPop := mq.Pop(test_queue)
 			So(errPop, ShouldBeNil)
+			So(v, ShouldNotBeNil)
 
 			So(v.Message(), ShouldResemble, test_message)
-			So(v.Queue(), ShouldEqual, test_queue)
-
 			So(v.Id(), ShouldNotEqual, "")
+
+			errAck := v.Ack()
+			So(errAck, ShouldBeNil)
 
 			_, e := strconv.Atoi(v.Id())
 			So(e, ShouldBeNil)
-
 		})
 
 		Convey(fmt.Sprintf("test publish message driver:%s", driverName), t, func() {
-			test_queue := "test-publish-queue"
+			mq, err := Open(dsn)
+
+			if err != nil {
+				t.Fatalf("Error: %+v\n", err)
+			}
+
+			test_queue := "somequeue"
 			test_message := []byte("testmessage")
-			err := mq.Publish(test_queue, test_message)
+			err = mq.Publish(test_queue, test_message)
 			So(err, ShouldBeNil)
 		})
 
-		Convey(fmt.Sprintf("test publish message driver:%s", driverName), t, func() {
+		Convey(fmt.Sprintf("test subscribe message driver:%s", driverName), t, func() {
+
+			mq, err := Open(dsn)
+
+			if err != nil {
+				t.Fatalf("Error: %+v\n", err)
+			}
+
 			data := []struct {
 				queue    string
 				messages [][]byte
 			}{
-				{"asdf", [][]byte{
+				{"anotherqueue", [][]byte{
 					[]byte("message"), []byte("message2"),
+				}},
+				{"anotherqueue", [][]byte{
+					[]byte("message3"), []byte("message4"),
 				}},
 			}
 
 			for _, v := range data {
+				quit := make(chan struct{})
+				wg := &sync.WaitGroup{}
+				gotData := [][]byte{}
+				queue := v.queue
+				results, _ := mq.Subscribe(quit, v.queue)
+				countMessages := len(v.messages)
+				wg.Add(countMessages)
+
+				go func() {
+					for i := 0; i < countMessages; i++ {
+						q := <-results
+						gotData = append(gotData, q.Message())
+						So(q.Queue(), ShouldEqual, queue)
+						wg.Done()
+					}
+				}()
+
 				for _, m := range v.messages {
-					errPublish := mq.Publish(v.queue, m)
+					errPublish := mq.Publish(queue, m)
 					So(errPublish, ShouldBeNil)
 				}
+
+				wg.Wait()
+				So(gotData, ShouldResemble, v.messages)
 			}
 
 		})

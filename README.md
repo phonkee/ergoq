@@ -9,7 +9,8 @@ to develop other drivers.
 ## What is this repository for? ##
 
 Ergoq package is small and lightweight message queue abstraction.
-Currently only redis implementation is done, but amqp is on the way also.
+Currently redis implementation and amqp is done.
+In the future more implementations will be done
 
 
 ## Usage ##
@@ -72,7 +73,7 @@ pool := redis.Pool{
 		return redis.Dial("tcp", ":6379")
 	},
 }
-mq, err := ergoq.OpenConnection("redis", &pool)
+mq, err := ergoq.OpenConnection("redis", &pool, "auto_ack=true")
 if err != nil {
 	panic(err)
 }
@@ -103,7 +104,7 @@ type MessageQueue interface {
 Examples:
 
 ```go
-// Error checking is omitted, but please you make you checks!
+// Error checking is omitted, but please you make your checks!
 mq, _ := ergoq.Open("redis://localhost:6379/0")
 
 // If we want to push to queue (direct) only first who pops this value will
