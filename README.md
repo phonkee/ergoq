@@ -33,6 +33,7 @@ Example:
 
 ```go
 dsn := "redis://localhost:6379/0?max_idle=100&max_active=100&idle_timeout=200"
+dsnAmqp := "amqp://guest:guest@localhost:5672/test?auto_ack=true&prefix=queues"
 ```
 
 Each driver can support it's params. 
