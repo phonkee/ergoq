@@ -11,5 +11,6 @@ services:
 before_script:
   - sudo rabbitmqctl add_vhost /test
   - sudo rabbitmqctl set_permissions -p /test guest ".*" ".*" ".*"
+  - go get -u github.com/smartystreets/goconvey
 
 script: go test ./...
