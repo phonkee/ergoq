@@ -1,5 +1,8 @@
 # README #
 
+
+[![Build Status](https://travis-ci.org/phonkee/ergoq.svg?branch=master)](https://travis-ci.org/phonkee/ergoq)
+
 ## Warning !! ##
 This library is heavily developed and the api can be changed !! 
 I hope that in couple of days the api will stabilize and I will continue
