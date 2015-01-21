@@ -8,4 +8,8 @@ services:
   - redis-server
   - rabbitmq
 
+before_script:
+  - rabbitmqctl add_vhost /test
+  - rabbitmqctl set_permissions -p /test guest ".*" ".*" ".*"
+
 script: go test ./...
