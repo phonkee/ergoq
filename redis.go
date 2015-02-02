@@ -112,6 +112,7 @@ func (r *redisMessageQueue) Push(queue string, message []byte) error {
 func (r *redisMessageQueue) Pop(queue string) (QueueMessage, error) {
 	// get connection from pool
 	conn := r.pool.Get()
+	defer conn.Close()
 
 	timestamp := time.Now().Unix()
 
@@ -234,7 +235,7 @@ func (r *redisQueueMessage) Ack() error {
 	fm := bytes.NewBufferString(r.Id() + ":")
 	fm.Write(r.Message())
 
-	_, err := conn.Do("ZREM", r.Queue(), fm.Bytes())
+	_, err := conn.Do("ZREM", RETRY_QUEUE+r.Queue(), fm.Bytes())
 	return err
 }
 
