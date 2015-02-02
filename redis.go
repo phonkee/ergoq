@@ -88,7 +88,7 @@ type redisMessageQueue struct {
 	// redis pool
 	pool *redis.Pool
 
-	// timeout to mar as non acked
+	// timeout to mark as non acked
 	retryNonAckedTimeout int
 
 	// automatically acknowledge of message
@@ -118,7 +118,7 @@ func (r *redisMessageQueue) Pop(queue string) (QueueMessage, error) {
 		go func() {
 			// release connection back to pool
 			defer conn.Close()
-			_, _ = queueNonAckedScript.Do(conn, queue, r.retryNonAckedTimeout, timestamp)
+			_, _ = queueNonAckedScript.Do(conn, queue, timestamp, r.retryNonAckedTimeout)
 		}()
 	}()
 

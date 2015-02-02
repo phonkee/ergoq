@@ -2,10 +2,12 @@ package ergoq
 
 import (
 	"fmt"
+	"math/rand"
 	"strconv"
 	"sync"
 	"testing"
 
+	"github.com/garyburd/redigo/redis"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -44,6 +46,10 @@ func TestDrivers(t *testing.T) {
 		"redis://localhost:6379",
 		"amqp://guest:guest@localhost:5672//test",
 	}
+
+	conn, _ := redis.Dial("tcp", "localhost:6379")
+	conn.Do("FLUSHDB")
+
 	for _, dsn := range dsns {
 		driverName, err := getNameFromDSN(dsn)
 		if err != nil {
@@ -58,7 +64,7 @@ func TestDrivers(t *testing.T) {
 			}
 
 			test_queue := "queue"
-			test_message := []byte("message")
+			test_message := []byte("message" + string(rand.Intn(1000000)))
 
 			errPush := mq.Push(test_queue, test_message)
 			So(errPush, ShouldBeNil)
@@ -86,7 +92,7 @@ func TestDrivers(t *testing.T) {
 			}
 
 			test_queue := "somequeue"
-			test_message := []byte("testmessage")
+			test_message := []byte("testmessage" + string(rand.Intn(1000000)))
 			err = mq.Publish(test_queue, test_message)
 			So(err, ShouldBeNil)
 		})
@@ -105,10 +111,10 @@ func TestDrivers(t *testing.T) {
 				messages [][]byte
 			}{
 				{"anotherqueue", [][]byte{
-					[]byte("message"), []byte("message2"),
+					[]byte("message" + string(rand.Intn(1000000))), []byte("message2" + string(rand.Intn(1000000))),
 				}},
 				{"anotherqueue", [][]byte{
-					[]byte("message3"), []byte("message4"),
+					[]byte("message3" + string(rand.Intn(1000000))), []byte("message4" + string(rand.Intn(1000000))),
 				}},
 			}
 

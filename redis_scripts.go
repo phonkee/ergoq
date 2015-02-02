@@ -51,12 +51,11 @@ func init() {
 
 	// redis lua script to re-queue non acked messages
 	queueNonAckedScript = redis.NewScript(3, fmt.Sprintf(`
-		local timeout = 300
 		local queue = KEYS[1]
 		local time = KEYS[2]
 		local timeout = KEYS[3]
 		local retryQueue = "%s" .. queue
-		local result = redis.call("ZRANGE", retryQueue, time - timeout, time)
+		local result = redis.call("ZRANGE", retryQueue, 0, time - timeout)
 		local num = 0
 		for _, value in ipairs(result) do
 			local index = string.find(value, ":")
@@ -65,6 +64,6 @@ func init() {
 			redis.call("RPUSH", queue, tempValue)
 			num = num + 1
 		end
-		redis.call("ZREMRANGEBYSCORE", retryQueue, time - timeout, time)
+		redis.call("ZREMRANGEBYSCORE", retryQueue, 0, time - timeout)
 		return num .. ""`, RETRY_QUEUE))
 }

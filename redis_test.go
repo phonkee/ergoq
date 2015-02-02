@@ -1,6 +1,7 @@
 package ergoq
 
 import (
+	"math/rand"
 	"testing"
 	"time"
 
@@ -58,6 +59,7 @@ func TestRedis(t *testing.T) {
 
 	Convey("Test custom scripts", t, func() {
 		timestamp := time.Now().Unix()
+		_ = timestamp
 
 		mq, err := Open(redisDsn)
 		So(err, ShouldBeNil)
@@ -79,7 +81,7 @@ func TestRedis(t *testing.T) {
 		So(err, ShouldBeNil)
 
 		test_queue := "test-queue"
-		test_message := []byte("test-message")
+		test_message := []byte("test-message" + string(rand.Intn(1000000)))
 
 		errPush := mq.Push(test_queue, test_message)
 		So(errPush, ShouldBeNil)
