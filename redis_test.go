@@ -70,10 +70,6 @@ func TestRedis(t *testing.T) {
 		conn := rmq.pool.Get()
 		defer conn.Close()
 
-		// blocking call must provide timeout
-		_, errNonBlocking := redis.Strings(popScript.Do(conn, "queue", timestamp))
-		So(errNonBlocking, ShouldBeNil)
-
 	})
 
 	Convey("Test ack", t, func() {

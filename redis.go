@@ -1,6 +1,7 @@
 package ergoq
 
 import (
+	"bytes"
 	"fmt"
 	"net/url"
 	"strconv"
@@ -17,6 +18,7 @@ const (
 	IDLE_TIMEOUT            = 500
 	RETRY_NON_ACKED_TIMEOUT = 600
 	AUTO_ACK                = false
+	REQUEUE_NON_ACKED_NUM   = 10
 )
 
 // register redis driver
@@ -113,14 +115,7 @@ func (r *redisMessageQueue) Pop(queue string) (QueueMessage, error) {
 
 	timestamp := time.Now().Unix()
 
-	// move non acked expired messages
-	defer func() {
-		go func() {
-			// release connection back to pool
-			defer conn.Close()
-			_, _ = queueNonAckedScript.Do(conn, queue, timestamp, r.retryNonAckedTimeout)
-		}()
-	}()
+	_, _ = queueNonAckedScript.Do(conn, queue, timestamp, r.retryNonAckedTimeout, 10)
 
 	// auto acknowledge mode
 	if r.autoAck {
@@ -235,7 +230,11 @@ func (r *redisQueueMessage) Ack() error {
 	}
 	conn := r.pool.Get()
 	defer conn.Close()
-	_, err := ackScript.Do(conn, r.Queue(), r.Id())
+
+	fm := bytes.NewBufferString(r.Id() + ":")
+	fm.Write(r.Message())
+
+	_, err := conn.Do("ZREM", r.Queue(), fm.Bytes())
 	return err
 }
 

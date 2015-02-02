@@ -40,32 +40,32 @@ func init() {
 		local id = add_message_to_retry_queue(queue, value, ts)
 		return {queue, value, id .. ""}`, RETRY_QUEUE, MESSAGE_COUNTER))
 
-	// redis lua script to acknowledge message
-	ackScript = redis.NewScript(2, fmt.Sprintf(`
-		local queue = KEYS[1]
-		local id = KEYS[2]
-		local retry_queue = "%s" .. queue
-		local lex = "[" .. id .. ":"
-		local result = redis.call("ZREMRANGEBYLEX", retry_queue, lex, lex)
-		return result`, RETRY_QUEUE))
-
 	// redis lua script to re-queue non acked messages
 	queueNonAckedScript = redis.NewScript(3, fmt.Sprintf(`
 		local queue = KEYS[1]
 		local time = KEYS[2]
 		local timeout = KEYS[3]
+		local maxRecords = tonumber(ARGV[1])
+		if maxRecords == nil then
+			maxRecords = %d
+		end
 		local retryQueue = "%s" .. queue
 		local result = redis.call("ZRANGEBYSCORE", retryQueue, 0, time - timeout)
 		local num = 0
+		
 		for _, value in ipairs(result) do
+
+			if num >= maxRecords then break end
+
 			local index = string.find(value, ":")
 			local id = value:sub(0, index)
 			index = index + 1
 			local tempValue = value:sub(index)
+
+			local lex = "[" .. id
+			redis.call("ZREM", retryQueue, value)
 			redis.call("RPUSH", queue, tempValue)
 			num = num + 1
-			local lex = "[" .. id
-			redis.call("ZREMRANGEBYLEX", retryQueue, lex, lex)
 		end
-		return num .. ""`, RETRY_QUEUE))
+		return num .. ""`, REQUEUE_NON_ACKED_NUM, RETRY_QUEUE))
 }
