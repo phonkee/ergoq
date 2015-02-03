@@ -30,7 +30,7 @@ func init() {
 type redisDriver struct{}
 
 // opens message queue by dsn
-func (r *redisDriver) Open(dsn string) (MessageQueue, error) {
+func (r *redisDriver) Open(dsn string) (MessageQueuer, error) {
 	pd, err := parseDSN(dsn)
 	if err != nil {
 		return nil, err
@@ -66,7 +66,7 @@ func (r *redisDriver) Open(dsn string) (MessageQueue, error) {
 }
 
 // opens message queue by connection (&redis.Pool)
-func (r *redisDriver) OpenConnection(connection interface{}, settings string) (MessageQueue, error) {
+func (r *redisDriver) OpenConnection(connection interface{}, settings string) (MessageQueuer, error) {
 	switch connection.(type) {
 	case *redis.Pool:
 		pool := connection.(*redis.Pool)
@@ -85,7 +85,7 @@ func newRedisMessageQueue(pool *redis.Pool) *redisMessageQueue {
 	return &mq
 }
 
-// redis message queue is redis implementation of MessageQueue interface
+// redis message queue is redis implementation of MessageQueuer interface
 type redisMessageQueue struct {
 	// redis pool
 	pool *redis.Pool

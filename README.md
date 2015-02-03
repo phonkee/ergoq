@@ -85,10 +85,10 @@ if err != nil {
 
 ## API ##
 
-MessageQueue interface says it all.
+MessageQueuer interface says it all.
 
 ```go
-type MessageQueue interface {
+type MessageQueuer interface {
 	// Pushes message to queue
 	Push(queue string, messages ...[]byte) error
 

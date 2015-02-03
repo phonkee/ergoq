@@ -26,7 +26,7 @@ func init() {
 type AMQPDriver struct{}
 
 // Open by DSN
-func (a *AMQPDriver) Open(dsn string) (MessageQueue, error) {
+func (a *AMQPDriver) Open(dsn string) (MessageQueuer, error) {
 
 	pd, err := ParseAMQPDSN(dsn)
 	if err != nil {
@@ -47,7 +47,7 @@ func (a *AMQPDriver) Open(dsn string) (MessageQueue, error) {
 }
 
 // open by already instantiated connection
-func (a *AMQPDriver) OpenConnection(connection interface{}, settings string) (MessageQueue, error) {
+func (a *AMQPDriver) OpenConnection(connection interface{}, settings string) (MessageQueuer, error) {
 
 	conn, ok := connection.(*amqp.Connection)
 	if !ok {

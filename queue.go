@@ -14,17 +14,17 @@ const (
 	DEFAULT_PREFIX   = "errgoq"
 )
 
-type MessageQueueDriver interface {
+type MessageQueueDriverer interface {
 
 	// "opens" message queuer
-	Open(dsn string) (MessageQueue, error)
+	Open(dsn string) (MessageQueuer, error)
 
 	// Opens queuer by connection
 	// 	settings is url encoded params e.g. "auto_ack=true&exchange=exchange"
-	OpenConnection(connection interface{}, settings string) (MessageQueue, error)
+	OpenConnection(connection interface{}, settings string) (MessageQueuer, error)
 }
 
-type MessageQueue interface {
+type MessageQueuer interface {
 
 	// Pushes message to queue
 	Push(queue string, message []byte) error
@@ -39,12 +39,12 @@ type MessageQueue interface {
 	Subscribe(quit <-chan struct{}, queues ...string) (chan SubscribeMessage, chan error)
 }
 
-var drivers = make(map[string]MessageQueueDriver)
+var drivers = make(map[string]MessageQueueDriverer)
 
 // Register makes a message queue driver available by the provided name.
 // If Register is called twice with the same name or if driver is nil,
 // it panics.
-func Register(name string, driver MessageQueueDriver) {
+func Register(name string, driver MessageQueueDriverer) {
 	if driver == nil {
 		panic("ergoq: Register driver is nil")
 	}
@@ -65,7 +65,7 @@ func Drivers() []string {
 }
 
 // opens message queue by dsn
-func Open(dsn string) (MessageQueue, error) {
+func Open(dsn string) (MessageQueuer, error) {
 	driverName, err := getNameFromDSN(dsn)
 	if err != nil {
 		return nil, err
@@ -79,7 +79,7 @@ func Open(dsn string) (MessageQueue, error) {
 }
 
 // opens message queue by name and connection
-func OpenConnection(driverName string, connection interface{}, settings ...string) (MessageQueue, error) {
+func OpenConnection(driverName string, connection interface{}, settings ...string) (MessageQueuer, error) {
 	di, ok := drivers[driverName]
 	if !ok {
 		return nil, fmt.Errorf("ergoq: unknown driver %q (forgotten import?)", driverName)
