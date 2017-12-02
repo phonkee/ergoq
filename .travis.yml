@@ -16,4 +16,4 @@ before_script:
   - glide install
   - go get github.com/smartystreets/goconvey
 
-script: go test ./...
+script: go test $(glide novendor)
