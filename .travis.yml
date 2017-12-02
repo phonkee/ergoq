@@ -3,8 +3,8 @@ language: go
 go:
   - 1.9
 
-#services:
-#  - redis-server
+services:
+  - redis-server
 #  - rabbitmq
 
 #before_script:
