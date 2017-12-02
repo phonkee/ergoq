@@ -1,0 +1,13 @@
+package: github.com/phonkee/ergoq
+import:
+- package: github.com/garyburd/redigo
+  version: v1.3.0
+  subpackages:
+  - redis
+- package: github.com/phonkee/godsn
+- package: github.com/streadway/amqp
+testImport:
+- package: github.com/smartystreets/goconvey
+  version: 1.6.3
+  subpackages:
+  - convey
