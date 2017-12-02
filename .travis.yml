@@ -11,6 +11,7 @@ go:
 #  - sudo rabbitmqctl add_vhost /test
 #  - sudo rabbitmqctl set_permissions -p /test guest ".*" ".*" ".*"
 
+before_script:
   - curl https://glide.sh/get | sh
   - glide install
   - go get github.com/smartystreets/goconvey
