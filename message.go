@@ -24,9 +24,9 @@ type SubscribeMessage interface {
 	Message() []byte
 }
 
-func NewSubscriberMessage(queue string, message []byte) SubscribeMessage {
+func NewSubscriberMessage(topic string, message []byte) SubscribeMessage {
 	return &subscriberMessage{
-		queue:   queue,
+		queue:   topic,
 		message: message,
 	}
 }

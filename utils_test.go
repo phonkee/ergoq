@@ -88,4 +88,25 @@ func TestName(t *testing.T) {
 		}
 	})
 
+	Convey("Test NewID", t, func(c C) {
+
+		countTests := 50
+
+		found := map[int64]struct{}{}
+		_ = found
+
+		var (
+			id int64
+			ok bool
+		)
+		for i := 0; i < countTests; i ++ {
+			id = NewID()
+
+			_, ok = found[id]
+			So(ok, ShouldBeFalse)
+
+			found[id] = struct{}{}
+		}
+	})
+
 }

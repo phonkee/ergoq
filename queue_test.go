@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/garyburd/redigo/redis"
 	. "github.com/smartystreets/goconvey/convey"
@@ -43,8 +44,9 @@ func TestMessageQueueDriver(t *testing.T) {
 
 func TestDrivers(t *testing.T) {
 	dsns := []string{
-		"redis://localhost:6379",
-		"amqp://guest:guest@localhost:5672//test",
+		//"redis://localhost:6379",
+		//"amqp://guest:guest@localhost:5672//test",
+		"loc:///size=1000",
 	}
 
 	conn, _ := redis.Dial("tcp", "localhost:6379")
@@ -61,9 +63,15 @@ func TestDrivers(t *testing.T) {
 
 			if err != nil {
 				t.Fatalf("Error: %+v\n", err)
+				t.Fail()
 			}
 
-			test_queue := "queue"
+			if mq == nil {
+				t.Fatalf("Driver returned nil error and nil MessageQueuer: %+v\n", dsn)
+				t.Fail()
+			}
+
+			test_queue := "topic"
 			test_message := []byte("message" + string(rand.Intn(1000000)))
 
 			errPush := mq.Push(test_queue, test_message)
@@ -98,7 +106,7 @@ func TestDrivers(t *testing.T) {
 		})
 
 		// commented due to error in goconvey (context in goroutines)
-		SkipConvey(fmt.Sprintf("test subscribe message driver:%s", driverName), t, func() {
+		Convey(fmt.Sprintf("test subscribe message driver:%s", driverName), t, func(c C) {
 
 			mq, err := Open(dsn)
 
@@ -107,44 +115,43 @@ func TestDrivers(t *testing.T) {
 			}
 
 			data := []struct {
-				queue    string
+				topic    string
 				messages [][]byte
 			}{
 				{"anotherqueue", [][]byte{
 					[]byte("message" + string(rand.Intn(1000000))), []byte("message2" + string(rand.Intn(1000000))),
 				}},
-				{"anotherqueue", [][]byte{
+				{"another", [][]byte{
 					[]byte("message3" + string(rand.Intn(1000000))), []byte("message4" + string(rand.Intn(1000000))),
 				}},
 			}
 
+			wg := &sync.WaitGroup{}
+
 			for _, v := range data {
-				quit := make(chan struct{})
-				wg := &sync.WaitGroup{}
-				gotData := [][]byte{}
-				queue := v.queue
-				results, _ := mq.Subscribe(quit, v.queue)
-				countMessages := len(v.messages)
-				wg.Add(countMessages)
+				func(c2 C) {
+					wg.Add(1)
+					defer wg.Done()
 
-				go func() {
+					quit := make(chan struct{})
+					results, _ := mq.Subscribe(quit, v.topic)
+
+					countMessages := len(v.messages)
+
 					for i := 0; i < countMessages; i++ {
-						q := <-results
-						gotData = append(gotData, q.Message())
-						So(q.Queue(), ShouldEqual, queue)
-						wg.Done()
+						errPublish := mq.Publish(v.topic, v.messages[i])
+						c.So(errPublish, ShouldBeNil)
 					}
-				}()
 
-				for _, m := range v.messages {
-					errPublish := mq.Publish(queue, m)
-					So(errPublish, ShouldBeNil)
-				}
+					close(quit)
 
-				wg.Wait()
-				So(gotData, ShouldResemble, v.messages)
+					time.Sleep(time.Millisecond * 500)
+					So(len(results), ShouldEqual, countMessages)
+				}(c)
+
 			}
 
+			wg.Wait()
 		})
 
 	}

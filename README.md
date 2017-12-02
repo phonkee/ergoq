@@ -21,9 +21,7 @@ In the future more implementations will be done
 All snippets of code assume import of library
 
 ```go
-	import (
-		"github.com/phonkee/ergoq"
-	)
+import "github.com/phonkee/ergoq"
 ```
 
 Ergoq supports drivers system as seen in sql package. Every driver uses it's own connection(for redis it's redis.Pool).
@@ -41,9 +39,9 @@ dsnAmqp := "amqp://guest:guest@localhost:5672/test?auto_ack=true&prefix=queues"
 
 Each driver can support it's params. 
 
-#### Drivers ####
+## Drivers
 
-RedisMessageQueueDriver
+#### Redis
 
 connection: &redis.Pool
 
@@ -53,8 +51,13 @@ DSN params:
 * max_active - default is 10
 * idle_timeout - default is 300
 
+#### Local
 
+local memory queue and publish/subscribe
 
+DSN params:
+
+* size - max size of queues
 
 ## Open message queue ##
 
@@ -90,14 +93,14 @@ MessageQueuer interface says it all.
 ```go
 type MessageQueuer interface {
 	// Pushes message to queue
-	Push(queue string, messages ...[]byte) error
+	Push(topic string, messages ...[]byte) error
 
 	// Pops message from queue
-	Pop(queue string) (QueueMessage, error)
+	Pop(topic string) (QueueMessage, error)
 
 	// Publishes message to queue (all subscribers)
 	// Fanout
-	Publish(queue string, message []byte) error
+	Publish(topic string, message []byte) error
 
 	// Subscribes to queue(s)
 	Subscribe(quit <-chan struct{}, topics ...string) (chan SubscriberMessage, chan error)

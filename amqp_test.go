@@ -10,12 +10,12 @@ import (
 
 func TestAmqp(t *testing.T) {
 
-	Convey("test open", t, func() {
+	SkipConvey("test open", t, func() {
 		_, err := amqp.Dial("amqp://nonexisting:guest@localhost:5672//test")
 		So(err, ShouldNotBeNil)
 
 	})
-	Convey("test openconnection", t, func() {
+	SkipConvey("test openconnection", t, func() {
 		_, err := OpenConnection("amqp", nil)
 		So(err, ShouldNotBeNil)
 

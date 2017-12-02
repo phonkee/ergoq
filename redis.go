@@ -29,7 +29,7 @@ func init() {
 // Redis driver implementation
 type redisDriver struct{}
 
-// opens message queue by dsn
+// opens message topic by dsn
 func (r *redisDriver) Open(dsn string) (MessageQueuer, error) {
 	pd, err := parseDSN(dsn)
 	if err != nil {
@@ -65,7 +65,7 @@ func (r *redisDriver) Open(dsn string) (MessageQueuer, error) {
 	return mq, nil
 }
 
-// opens message queue by connection (&redis.Pool)
+// opens message topic by connection (&redis.Pool)
 func (r *redisDriver) OpenConnection(connection interface{}, settings string) (MessageQueuer, error) {
 	switch connection.(type) {
 	case *redis.Pool:
@@ -85,7 +85,7 @@ func newRedisMessageQueue(pool *redis.Pool) *redisMessageQueue {
 	return &mq
 }
 
-// redis message queue is redis implementation of MessageQueuer interface
+// redis message topic is redis implementation of MessageQueuer interface
 type redisMessageQueue struct {
 	// redis pool
 	pool *redis.Pool
@@ -97,7 +97,7 @@ type redisMessageQueue struct {
 	autoAck bool
 }
 
-// Pushes message to queue to be consumed by one of workers
+// Pushes message to topic to be consumed by one of workers
 func (r *redisMessageQueue) Push(queue string, message []byte) error {
 	// get connection from pool
 	conn := r.pool.Get()
@@ -108,7 +108,7 @@ func (r *redisMessageQueue) Push(queue string, message []byte) error {
 	return err
 }
 
-// Pops message from queue
+// Pops message from topic
 func (r *redisMessageQueue) Pop(queue string) (QueueMessage, error) {
 	// get connection from pool
 	conn := r.pool.Get()
@@ -151,19 +151,19 @@ func (r *redisMessageQueue) Pop(queue string) (QueueMessage, error) {
 	}, nil
 }
 
-// publishes to all queue listeners
-func (r *redisMessageQueue) Publish(queue string, message []byte) error {
+// publishes to all topic listeners
+func (r *redisMessageQueue) Publish(topic string, message []byte) error {
 	// get connection from pool
 	conn := r.pool.Get()
 	// release connection back to pool
 	defer conn.Close()
 
-	_, err := conn.Do("PUBLISH", queue, message)
+	_, err := conn.Do("PUBLISH", topic, message)
 	return err
 }
 
 // Subscribe
-func (r *redisMessageQueue) Subscribe(quit <-chan struct{}, queues ...string) (chan SubscribeMessage, chan error) {
+func (r *redisMessageQueue) Subscribe(quit <-chan struct{}, topics ...string) (chan SubscribeMessage, chan error) {
 
 	results := make(chan SubscribeMessage)
 	errors := make(chan error)
@@ -171,7 +171,7 @@ func (r *redisMessageQueue) Subscribe(quit <-chan struct{}, queues ...string) (c
 	conn := r.pool.Get()
 
 	pubsubConn := redis.PubSubConn{conn}
-	pubsubConn.Subscribe(redis.Args{}.AddFlat(queues)...)
+	pubsubConn.Subscribe(redis.Args{}.AddFlat(topics)...)
 
 	go func() {
 		// release connection back to pool
@@ -244,7 +244,7 @@ func (r *redisQueueMessage) Id() string {
 	return r.id
 }
 
-// returns queue
+// returns topic
 func (r *redisQueueMessage) Queue() string {
 	return r.queue
 }

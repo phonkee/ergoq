@@ -1,15 +1,15 @@
 language: go
 
 go:
-  - 1.4
+  - 1.9
 
-services:
-  - redis-server
-  - rabbitmq
+#services:
+#  - redis-server
+#  - rabbitmq
 
-before_script:
-  - sudo rabbitmqctl add_vhost /test
-  - sudo rabbitmqctl set_permissions -p /test guest ".*" ".*" ".*"
+#before_script:
+#  - sudo rabbitmqctl add_vhost /test
+#  - sudo rabbitmqctl set_permissions -p /test guest ".*" ".*" ".*"
   - go get -u github.com/smartystreets/goconvey
 
 script: go test ./...

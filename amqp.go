@@ -67,7 +67,7 @@ func (a *AMQPDriver) OpenConnection(connection interface{}, settings string) (Me
 	return &d, nil
 }
 
-// amqp message queue implementation
+// amqp message topic implementation
 type amqpMessageQueue struct {
 	conn     *amqp.Connection
 	settings *amqpURLSettings
@@ -85,7 +85,7 @@ func (a *amqpMessageQueue) declareFanoutExchange(channel *amqp.Channel) error {
 	)
 }
 
-// pushes message to queue
+// pushes message to topic
 func (a *amqpMessageQueue) Push(queue string, message []byte) (err error) {
 	ch, err := a.conn.Channel()
 	if err != nil {
@@ -162,7 +162,7 @@ func (a *amqpMessageQueue) Pop(queue string) (QueueMessage, error) {
 }
 
 // publishes message to fanout exchange
-func (a *amqpMessageQueue) Publish(queue string, message []byte) (err error) {
+func (a *amqpMessageQueue) Publish(topic string, message []byte) (err error) {
 	ch, errChannel := a.conn.Channel()
 
 	if errChannel != nil {
@@ -176,7 +176,7 @@ func (a *amqpMessageQueue) Publish(queue string, message []byte) (err error) {
 
 	err = ch.Publish(
 		a.settings.getName("fanout"), // exchange
-		queue, // routing key
+		topic, // routing key
 		false, // mandatory
 		false, // immediate
 		amqp.Publishing{
@@ -192,7 +192,7 @@ func (a *amqpMessageQueue) Publish(queue string, message []byte) (err error) {
 }
 
 // starts receiving messages
-func (a *amqpMessageQueue) Subscribe(quit <-chan struct{}, queues ...string) (chan SubscribeMessage, chan error) {
+func (a *amqpMessageQueue) Subscribe(quit <-chan struct{}, topics ...string) (chan SubscribeMessage, chan error) {
 	errors := make(chan error)
 	values := make(chan SubscribeMessage)
 	ch, _ := a.conn.Channel()
@@ -209,9 +209,9 @@ func (a *amqpMessageQueue) Subscribe(quit <-chan struct{}, queues ...string) (ch
 
 	fe := a.settings.getName("fanout")
 	// bind to multiple routing keys
-	for _, queue := range queues {
+	for _, queue := range topics {
 		ch.QueueBind(
-			q.Name, // queue name
+			q.Name, // topic name
 			queue,  // routing key
 			fe,     // exchange
 			false,  //nowait
@@ -219,7 +219,7 @@ func (a *amqpMessageQueue) Subscribe(quit <-chan struct{}, queues ...string) (ch
 	}
 
 	deliveries, _ := ch.Consume(
-		q.Name, // queue
+		q.Name, // topic
 		"",     // consumer
 		true,   // autoack
 		true,   // exclusive
@@ -319,7 +319,7 @@ func (a *amqpQueueMessage) Id() string {
 	return fmt.Sprintf("%d", a.delivery.MessageCount)
 }
 
-// returns queue
+// returns topic
 func (a *amqpQueueMessage) Queue() string {
 	return a.delivery.RoutingKey
 }

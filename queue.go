@@ -26,22 +26,22 @@ type MessageQueueDriverer interface {
 
 type MessageQueuer interface {
 
-	// Pushes message to queue
+	// Pushes message to topic
 	Push(queue string, message []byte) error
 
-	// Pops message from queue
+	// Pops message from topic
 	Pop(queue string) (QueueMessage, error)
 
-	// Publishes message to queue(fanout for all subscribers)
-	Publish(queue string, message []byte) error
+	// Publishes message to topic(fanout for all subscribers)
+	Publish(topic string, message []byte) error
 
-	// Subscribes to queue(s)
-	Subscribe(quit <-chan struct{}, queues ...string) (chan SubscribeMessage, chan error)
+	// Subscribes to topic(s)
+	Subscribe(quit <-chan struct{}, topics ...string) (chan SubscribeMessage, chan error)
 }
 
 var drivers = make(map[string]MessageQueueDriverer)
 
-// Register makes a message queue driver available by the provided name.
+// Register makes a message topic driver available by the provided name.
 // If Register is called twice with the same name or if driver is nil,
 // it panics.
 func Register(name string, driver MessageQueueDriverer) {
@@ -64,7 +64,7 @@ func Drivers() []string {
 	return list
 }
 
-// opens message queue by dsn
+// opens message topic by dsn
 func Open(dsn string) (MessageQueuer, error) {
 	driverName, err := getNameFromDSN(dsn)
 	if err != nil {
@@ -78,7 +78,7 @@ func Open(dsn string) (MessageQueuer, error) {
 	return di.Open(dsn)
 }
 
-// opens message queue by name and connection
+// opens message topic by name and connection
 func OpenConnection(driverName string, connection interface{}, settings ...string) (MessageQueuer, error) {
 	di, ok := drivers[driverName]
 	if !ok {
